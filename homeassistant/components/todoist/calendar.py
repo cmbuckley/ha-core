@@ -21,7 +21,7 @@ from homeassistant.components.calendar import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ID, CONF_NAME, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -221,19 +221,31 @@ def async_register_services(  # noqa: C901
             if project_name == project.name.lower():
                 project_id = project.id
         if project_id is None:
-            raise HomeAssistantError(f"Invalid project name '{project_name}'")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="project_invalid",
+                translation_placeholders={
+                    "project": project_name,
+                },
+            )
 
         # Optional section within project
         section_id: str | None = None
         if SECTION_NAME in call.data:
-            section_name = call.data[SECTION_NAME].lower()
+            section_name = call.data[SECTION_NAME]
             sections = await coordinator.async_get_sections(project_id)
             for section in sections:
                 if section_name == section.name.lower():
                     section_id = section.id
+                    break
             if section_id is None:
-                raise HomeAssistantError(
-                    f"Invalid section '{section_name}' within project '{project_name}'"
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="section_invalid",
+                    translation_placeholders={
+                        "section": section_name,
+                        "project": project_name,
+                    },
                 )
 
         # Create the task
